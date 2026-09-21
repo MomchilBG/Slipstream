@@ -394,7 +394,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
     }
 
     setSubmittingReply(true)
-    const { error } = await createComment(postId, profile.id, trimmed, replyingToParentId)
+    const { error } = await createComment(postId, profile.id, trimmed, replyingToParentId, replyingToCommentId)
     setSubmittingReply(false)
 
     if (error) {

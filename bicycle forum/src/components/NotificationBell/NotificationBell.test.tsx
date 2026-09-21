@@ -127,6 +127,26 @@ describe('NotificationBell', () => {
     expect(markNotificationReadMock).not.toHaveBeenCalled()
   })
 
+  it('reverts the optimistic read state and badge when marking a notification read fails', async () => {
+    const user = userEvent.setup()
+    getUnreadNotificationCountMock.mockResolvedValue(1)
+    getNotificationsMock.mockResolvedValue([notification])
+    markNotificationReadMock.mockResolvedValue({ error: { message: 'network error' } } as never)
+    renderWithProviders(<NotificationBell />, { authValue: makeSignedInAuthValue() })
+
+    await screen.findByText('1')
+    await user.click(screen.getByRole('button', { name: /Notifications/ }))
+    await user.click(await screen.findByText('alexr did something'))
+
+    // The failed update is undone rather than left applied - badge count
+    // goes back to 1 instead of staying permanently decremented.
+    expect(await screen.findByText('1')).toBeInTheDocument()
+
+    // Reopening shows the notification still marked unread in the cached list too.
+    await user.click(screen.getByRole('button', { name: /Notifications/ }))
+    expect(screen.getByText('alexr did something')).toHaveClass('unread')
+  })
+
   it('closes the dropdown on Escape', async () => {
     const user = userEvent.setup()
     renderWithProviders(<NotificationBell />, { authValue: makeSignedInAuthValue() })

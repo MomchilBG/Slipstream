@@ -53,6 +53,7 @@ export type Database = {
           is_deleted: boolean
           parent_comment_id: string | null
           post_id: string
+          reply_target_id: string | null
           updated_at: string
         }
         Insert: {
@@ -63,6 +64,7 @@ export type Database = {
           is_deleted?: boolean
           parent_comment_id?: string | null
           post_id: string
+          reply_target_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -73,6 +75,7 @@ export type Database = {
           is_deleted?: boolean
           parent_comment_id?: string | null
           post_id?: string
+          reply_target_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -95,6 +98,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_reply_target_id_fkey"
+            columns: ["reply_target_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
             referencedColumns: ["id"]
           },
         ]

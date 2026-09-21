@@ -70,15 +70,28 @@ const NotificationBell = () => {
     })
   }
 
+  const setNotificationReadState = (notificationId: string, isRead: boolean) => {
+    setNotifications((current) =>
+      current?.map((item) => (item.id === notificationId ? { ...item, isRead } : item)) ?? current,
+    )
+  }
+
   const handleSelect = async (notification: NotificationItem) => {
     setOpen(false)
 
     if (!notification.isRead) {
       setUnreadCount((current) => Math.max(current - 1, 0))
-      setNotifications((current) =>
-        current?.map((item) => (item.id === notification.id ? { ...item, isRead: true } : item)) ?? current,
-      )
-      await markNotificationRead(notification.id)
+      setNotificationReadState(notification.id, true)
+
+      const { error } = await markNotificationRead(notification.id)
+      if (error) {
+        // The DB update failed - undo the optimistic changes above so the
+        // cached list and badge don't drift out of sync with what's
+        // actually stored (a silently-discarded error here would otherwise
+        // leave this notification looking read for the rest of the session).
+        setUnreadCount((current) => current + 1)
+        setNotificationReadState(notification.id, false)
+      }
     }
 
     navigate(notificationHref(notification))

@@ -44,4 +44,17 @@ describe('MentionText', () => {
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
+
+  it('does not linkify the domain part of an email address', () => {
+    renderText('email me at bob@example.com for details')
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('still linkifies a real mention that follows an email in the same message', () => {
+    renderText('email bob@example.com or ping @alexr directly')
+
+    expect(screen.queryByRole('link', { name: '@example' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '@alexr' })).toHaveAttribute('href', '/users/alexr')
+  })
 })

@@ -6,7 +6,12 @@ import { Link } from 'react-router-dom'
 // lowercase letters, numbers, underscores) - see Register.tsx's
 // USERNAME_PATTERN and the notify_on_comment_insert() trigger that scans
 // comment content for the same shape to generate mention notifications.
-const MENTION_PATTERN = /@([A-Za-z0-9_]{3,32})/g
+// The negative lookbehind requires the "@" to not be glued onto a
+// preceding email/URL-ish character, so "bob@example.com" isn't read as a
+// mention of "example" - kept in sync with the trigger's own boundary
+// check (Postgres regex has no lookbehind, so that side uses an
+// equivalent leading-character-class alternative instead).
+const MENTION_PATTERN = /(?<![A-Za-z0-9_.+-])@([A-Za-z0-9_]{3,32})/g
 
 // Renders comment/reply content as plain text, except each "@username"
 // token becomes a link to that user's profile - used wherever comment

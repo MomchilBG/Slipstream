@@ -197,7 +197,8 @@ describe('PostView', () => {
     await user.type(replyBox, 'Thanks!')
     await user.click(within(replyForm).getByRole('button', { name: 'Reply' }))
 
-    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@commenter Thanks!', 'c1')
+    // Replying to a top-level comment: parent and reply-target are the same comment.
+    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@commenter Thanks!', 'c1', 'c1')
   })
 
   it('replies to a reply, attaching flatly to the same top-level comment rather than nesting further', async () => {
@@ -224,9 +225,10 @@ describe('PostView', () => {
     await user.type(replyBox, 'Agreed!')
     await user.click(within(replyForm).getByRole('button', { name: 'Reply' }))
 
-    // parentId is still the top-level comment (c1), not the reply (r1) - the reply the
-    // button was clicked on doesn't itself become a parent, keeping the thread flat.
-    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@dana Agreed!', 'c1')
+    // The flat parent stays the top-level comment (c1), keeping the thread
+    // flat, but the reply-target is the actual reply clicked (r1) so
+    // notify_on_comment_insert() can notify dana specifically.
+    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@dana Agreed!', 'c1', 'r1')
   })
 
   it('moves the reply form to whichever reply is clicked when there are several', async () => {

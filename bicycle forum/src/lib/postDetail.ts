@@ -145,7 +145,11 @@ export const getComments = async (postId: string): Promise<CommentItem[]> => {
   }))
 }
 
-export const createComment = (postId: string, authorId: string, content: string, parentCommentId: string | null = null) => supabase.from('comments').insert({ post_id: postId, author_id: authorId, content, parent_comment_id: parentCommentId })
+// replyTargetId is the comment actually being replied to (which may be a
+// reply itself, not the flat top-level parentCommentId every reply attaches
+// under) - carried separately so notify_on_comment_insert() can notify the
+// right person regardless of what @mention text ends up in the content.
+export const createComment = (postId: string, authorId: string, content: string, parentCommentId: string | null = null, replyTargetId: string | null = null) => supabase.from('comments').insert({ post_id: postId, author_id: authorId, content, parent_comment_id: parentCommentId, reply_target_id: replyTargetId })
 
 export const updateComment = (commentId: string, content: string) => supabase.from('comments').update({ content }).eq('id', commentId)
 
