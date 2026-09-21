@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
@@ -169,15 +169,27 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
   const [commentError, setCommentError] = useState<string | null>(null)
   const [submittingComment, setSubmittingComment] = useState(false)
 
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  // The username of whichever comment/reply "Reply" was actually clicked on
-  // - separate from replyingTo (always the top-level thread id, since
-  // replies are flat) so the composer's placeholder still names the right
-  // person if the prefilled @mention is cleared out.
+  // Which comment/reply the form visually renders directly under - the one
+  // whose "Reply" button was actually clicked, top-level or not.
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null)
+  // Which comment the new reply actually attaches to once submitted -
+  // always a top-level id, since replies stay flat (see startReply()).
+  // Kept distinct from replyingToCommentId so the two can differ when
+  // replying to a reply.
+  const [replyingToParentId, setReplyingToParentId] = useState<string | null>(null)
+  // The username of whichever comment/reply "Reply" was actually clicked on,
+  // so the composer's placeholder still names the right person if the
+  // prefilled @mention is cleared out.
   const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [replyError, setReplyError] = useState<string | null>(null)
   const [submittingReply, setSubmittingReply] = useState(false)
+  // Bumped on every "Reply" click (even re-clicking the same comment) so the
+  // focus-and-move-caret-to-the-end effect below reliably reruns - keying it
+  // on replyingToCommentId alone wouldn't fire again for a re-click on the
+  // same target, and keying it on replyText would fire on every keystroke.
+  const [replySessionId, setReplySessionId] = useState(0)
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -333,26 +345,46 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
   // notification rather than sending that person two notifications.
   // Replies are flat (one level deep) - replying to a reply attaches the
   // new comment to the same top-level parent as a sibling, not to the
-  // reply itself, so it lands in the same visible list rather than
-  // creating a second layer of nesting the rest of this page doesn't
-  // render. The reply's own author still gets @mentioned via the prefill.
+  // reply itself (replyingToParentId), even though the form itself renders
+  // directly under whichever comment was actually clicked
+  // (replyingToCommentId). The reply's own author still gets @mentioned via
+  // the prefill.
   const startReply = (comment: CommentItem) => {
-    setReplyingTo(comment.parentCommentId ?? comment.id)
+    setReplyingToCommentId(comment.id)
+    setReplyingToParentId(comment.parentCommentId ?? comment.id)
     setReplyingToAuthor(comment.author.username)
     setReplyText(`@${comment.author.username} `)
     setReplyError(null)
+    setReplySessionId((current) => current + 1)
   }
 
   const cancelReply = () => {
-    setReplyingTo(null)
+    setReplyingToCommentId(null)
+    setReplyingToParentId(null)
     setReplyingToAuthor(null)
     setReplyText('')
     setReplyError(null)
   }
 
-  const handleReplySubmit = async (event: FormEvent<HTMLFormElement>, parentId: string) => {
+  // Focuses the textarea and moves the caret to the end of the prefilled
+  // "@username " text rather than leaving it at the browser's own default
+  // (the very start) - runs once per "Reply" click via replySessionId
+  // rather than depending on replyingToCommentId (wouldn't rerun for a
+  // re-click on the same comment) or replyText (would rerun on every
+  // keystroke and fight the user's own cursor placement while typing).
+  useEffect(() => {
+    if (replySessionId === 0) return
+    const textarea = replyTextareaRef.current
+    if (!textarea) return
+
+    textarea.focus()
+    const end = textarea.value.length
+    textarea.setSelectionRange(end, end)
+  }, [replySessionId])
+
+  const handleReplySubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!profile) return
+    if (!profile || !replyingToParentId) return
     setReplyError(null)
 
     const trimmed = replyText.trim()
@@ -362,7 +394,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
     }
 
     setSubmittingReply(true)
-    const { error } = await createComment(postId, profile.id, trimmed, parentId)
+    const { error } = await createComment(postId, profile.id, trimmed, replyingToParentId)
     setSubmittingReply(false)
 
     if (error) {
@@ -491,6 +523,36 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
         onEditSubmit={(event) => handleEditCommentSubmit(event, comment.id)}
         onDelete={() => setDeleteCommentTarget(comment)}
       />
+    )
+  }
+
+  // Renders directly under whichever comment (top-level or a reply) the
+  // "Reply" button was actually clicked on, rather than always in one fixed
+  // spot per thread - null for every other comment, since only one reply
+  // form is ever open at a time.
+  const renderReplyForm = (commentId: string) => {
+    if (replyingToCommentId !== commentId || editingCommentId === commentId) return null
+
+    return (
+      <form className="reply-form" onSubmit={handleReplySubmit}>
+        <textarea
+          ref={replyTextareaRef}
+          value={replyText}
+          onChange={(event) => setReplyText(event.target.value)}
+          placeholder={`Reply to ${replyingToAuthor}…`}
+          rows={2}
+          maxLength={8192}
+        />
+        {replyError && <p className="auth-form-error">{replyError}</p>}
+        <div className="reply-form-actions">
+          <button type="submit" className="button primary" disabled={submittingReply}>
+            {submittingReply ? 'Replying…' : 'Reply'}
+          </button>
+          <button type="button" onClick={cancelReply}>
+            Cancel
+          </button>
+        </div>
+      </form>
     )
   }
 
@@ -648,29 +710,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
                   className={comment.id === highlightedCommentId ? 'comment-item comment-item-highlighted' : 'comment-item'}
                 >
                   {renderCommentBody(comment)}
-
-                  {editingCommentId !== comment.id &&
-                    (replyingTo === comment.id ? (
-                      <form className="reply-form" onSubmit={(event) => handleReplySubmit(event, comment.id)}>
-                        <textarea
-                          value={replyText}
-                          onChange={(event) => setReplyText(event.target.value)}
-                          placeholder={`Reply to ${replyingToAuthor ?? comment.author.username}…`}
-                          rows={2}
-                          maxLength={8192}
-                          autoFocus
-                        />
-                        {replyError && <p className="auth-form-error">{replyError}</p>}
-                        <div className="reply-form-actions">
-                          <button type="submit" className="button primary" disabled={submittingReply}>
-                            {submittingReply ? 'Replying…' : 'Reply'}
-                          </button>
-                          <button type="button" onClick={cancelReply}>
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    ) : null)}
+                  {renderReplyForm(comment.id)}
 
                   {(repliesByParent.get(comment.id) ?? []).length > 0 && (
                     <ul className="comment-replies">
@@ -685,6 +725,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
                           }
                         >
                           {renderCommentBody(reply)}
+                          {renderReplyForm(reply.id)}
                         </li>
                       ))}
                     </ul>

@@ -188,8 +188,11 @@ describe('PostView', () => {
 
     await user.click(screen.getByRole('button', { name: 'Reply' }))
     const replyForm = screen.getByPlaceholderText('Reply to commenter…').closest<HTMLFormElement>('.reply-form')!
-    const replyBox = within(replyForm).getByPlaceholderText('Reply to commenter…')
+    const replyBox = within(replyForm).getByPlaceholderText('Reply to commenter…') as HTMLTextAreaElement
     expect(replyBox).toHaveValue('@commenter ')
+    // The caret starts after the prefilled mention, not at the very start.
+    expect(replyBox.selectionStart).toBe('@commenter '.length)
+    expect(replyBox.selectionEnd).toBe('@commenter '.length)
 
     await user.type(replyBox, 'Thanks!')
     await user.click(within(replyForm).getByRole('button', { name: 'Reply' }))
@@ -210,9 +213,13 @@ describe('PostView', () => {
     expect(within(replyRow).getByRole('button', { name: 'Reply' })).toBeInTheDocument()
     await user.click(within(replyRow).getByRole('button', { name: 'Reply' }))
 
-    const replyForm = screen.getByPlaceholderText('Reply to dana…').closest<HTMLFormElement>('.reply-form')!
-    const replyBox = within(replyForm).getByPlaceholderText('Reply to dana…')
+    // The form renders directly under the reply that was actually clicked,
+    // not up under the top-level comment.
+    const replyBox = within(replyRow).getByPlaceholderText('Reply to dana…') as HTMLTextAreaElement
+    const replyForm = replyBox.closest<HTMLFormElement>('.reply-form')!
+    expect(replyRow.contains(replyForm)).toBe(true)
     expect(replyBox).toHaveValue('@dana ')
+    expect(replyBox.selectionStart).toBe('@dana '.length)
 
     await user.type(replyBox, 'Agreed!')
     await user.click(within(replyForm).getByRole('button', { name: 'Reply' }))
@@ -220,6 +227,29 @@ describe('PostView', () => {
     // parentId is still the top-level comment (c1), not the reply (r1) - the reply the
     // button was clicked on doesn't itself become a parent, keeping the thread flat.
     expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@dana Agreed!', 'c1')
+  })
+
+  it('moves the reply form to whichever reply is clicked when there are several', async () => {
+    const user = userEvent.setup()
+    getCommentsMock.mockResolvedValue([
+      makeComment({ id: 'c1' }),
+      makeComment({ id: 'r1', parentCommentId: 'c1', content: 'First reply', author: { ...author, id: 'u2', username: 'dana' } }),
+      makeComment({ id: 'r2', parentCommentId: 'c1', content: 'Second reply', author: { ...author, id: 'u3', username: 'eli' } }),
+    ])
+    renderPostView()
+    await screen.findByText('Second reply')
+
+    const secondReplyRow = screen.getByText('Second reply').closest<HTMLElement>('.comment-reply')!
+    await user.click(within(secondReplyRow).getByRole('button', { name: 'Reply' }))
+
+    expect(within(secondReplyRow).getByPlaceholderText('Reply to eli…')).toBeInTheDocument()
+    const firstReplyRow = screen.getByText('First reply').closest<HTMLElement>('.comment-reply')!
+    expect(within(firstReplyRow).queryByPlaceholderText(/Reply to/)).not.toBeInTheDocument()
+
+    // Switching to the first reply moves the form there instead.
+    await user.click(within(firstReplyRow).getByRole('button', { name: 'Reply' }))
+    expect(within(firstReplyRow).getByPlaceholderText('Reply to dana…')).toBeInTheDocument()
+    expect(within(secondReplyRow).queryByPlaceholderText(/Reply to/)).not.toBeInTheDocument()
   })
 
   it("lets a comment's own author edit it inline", async () => {
