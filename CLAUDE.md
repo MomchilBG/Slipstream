@@ -30,7 +30,7 @@ Commit finished, working increments of the forum with clear, descriptive commit 
 
 ## Intended architecture (from Requirements.md)
 
-The project is meant to be a **TypeScript + React + Vite** bicycle forum, with **Supabase** as the backing store and for authentication. Do not build a custom auth entity — Supabase auth is the system of record for login/session state.
+The project is meant to be a **TypeScript + React + Vite** bicycle forum, branded **Slipstream** (`index.html`'s title, the navbar's `#brand`, and `package.json`'s `name` all reflect this), with **Supabase** as the backing store and for authentication. Do not build a custom auth entity — Supabase auth is the system of record for login/session state.
 
 Key domain entities and rules to preserve when implementing data models and validation:
 

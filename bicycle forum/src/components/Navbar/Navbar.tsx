@@ -31,7 +31,7 @@ const Navbar = () => {
       </button>
       <div id="nav-menu" className={menuOpen ? 'open' : undefined}>
         <NavLink to="/" id="brand" onClick={closeMenu}>
-          🚲 Bicycle Forum
+          🚲 Slipstream
         </NavLink>
         <nav>
           {profile ? (

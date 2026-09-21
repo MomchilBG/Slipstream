@@ -41,7 +41,7 @@ const Home = () => {
   return (
     <>
       <section id="hero">
-        <h1>Welcome to the Bicycle Forum</h1>
+        <h1>Welcome to Slipstream</h1>
         <p>A place for cyclists to share builds, routes, and advice.</p>
         <div id="hero-stats">
           <div>
