@@ -10,6 +10,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    css: true,
+    // Leave CSS imports stubbed out (the default) rather than actually
+    // parsed - jsdom's CSS parser chokes on some of this app's modern
+    // syntax, which broke accessible-name computation for at least one
+    // element in Navbar.test.tsx. Nothing here asserts on computed styles.
   },
 })
