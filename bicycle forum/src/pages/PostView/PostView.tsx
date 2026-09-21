@@ -170,6 +170,11 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
   const [submittingComment, setSubmittingComment] = useState(false)
 
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  // The username of whichever comment/reply "Reply" was actually clicked on
+  // - separate from replyingTo (always the top-level thread id, since
+  // replies are flat) so the composer's placeholder still names the right
+  // person if the prefilled @mention is cleared out.
+  const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [replyError, setReplyError] = useState<string | null>(null)
   const [submittingReply, setSubmittingReply] = useState(false)
@@ -326,14 +331,21 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
   // reads it the same way any other @mention in the content would be read,
   // deliberately deduping against the reply's own reply_to_comment
   // notification rather than sending that person two notifications.
+  // Replies are flat (one level deep) - replying to a reply attaches the
+  // new comment to the same top-level parent as a sibling, not to the
+  // reply itself, so it lands in the same visible list rather than
+  // creating a second layer of nesting the rest of this page doesn't
+  // render. The reply's own author still gets @mentioned via the prefill.
   const startReply = (comment: CommentItem) => {
-    setReplyingTo(comment.id)
+    setReplyingTo(comment.parentCommentId ?? comment.id)
+    setReplyingToAuthor(comment.author.username)
     setReplyText(`@${comment.author.username} `)
     setReplyError(null)
   }
 
   const cancelReply = () => {
     setReplyingTo(null)
+    setReplyingToAuthor(null)
     setReplyText('')
     setReplyError(null)
   }
@@ -450,7 +462,10 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
     }
   }
 
-  const renderCommentBody = (comment: CommentItem, canReply: boolean) => {
+  // Both top-level comments and their replies can be replied to (replies
+  // are flat - see startReply() - so this is the same canComment gate
+  // either way, not conditioned on nesting depth).
+  const renderCommentBody = (comment: CommentItem) => {
     const isOwn = profile?.id === comment.author.id
     const isOwnAndNotBlocked = isOwn && !!profile && !profile.is_blocked
     // While a comment is being edited, only its own Edit stays available -
@@ -461,7 +476,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
     return (
       <CommentBody
         comment={comment}
-        canReply={canReply && canComment}
+        canReply={canComment}
         canEdit={isOwnAndNotBlocked && !editLocked && !comment.isDeleted}
         canDelete={isOwnAndNotBlocked && !comment.isDeleted}
         isEditing={editingCommentId === comment.id}
@@ -632,7 +647,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
                   id={`comment-${comment.id}`}
                   className={comment.id === highlightedCommentId ? 'comment-item comment-item-highlighted' : 'comment-item'}
                 >
-                  {renderCommentBody(comment, true)}
+                  {renderCommentBody(comment)}
 
                   {editingCommentId !== comment.id &&
                     (replyingTo === comment.id ? (
@@ -640,7 +655,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
                         <textarea
                           value={replyText}
                           onChange={(event) => setReplyText(event.target.value)}
-                          placeholder={`Reply to ${comment.author.username}…`}
+                          placeholder={`Reply to ${replyingToAuthor ?? comment.author.username}…`}
                           rows={2}
                           maxLength={8192}
                           autoFocus
@@ -669,7 +684,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
                               : 'comment-item comment-reply'
                           }
                         >
-                          {renderCommentBody(reply, false)}
+                          {renderCommentBody(reply)}
                         </li>
                       ))}
                     </ul>

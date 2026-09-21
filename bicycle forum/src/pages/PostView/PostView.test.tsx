@@ -197,6 +197,31 @@ describe('PostView', () => {
     expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@commenter Thanks!', 'c1')
   })
 
+  it('replies to a reply, attaching flatly to the same top-level comment rather than nesting further', async () => {
+    const user = userEvent.setup()
+    getCommentsMock.mockResolvedValue([
+      makeComment({ id: 'c1' }),
+      makeComment({ id: 'r1', parentCommentId: 'c1', content: 'Good point', author: { ...author, id: 'reply-author', username: 'dana' } }),
+    ])
+    renderPostView()
+    await screen.findByText('Good point')
+
+    const replyRow = screen.getByText('Good point').closest<HTMLElement>('.comment-reply')!
+    expect(within(replyRow).getByRole('button', { name: 'Reply' })).toBeInTheDocument()
+    await user.click(within(replyRow).getByRole('button', { name: 'Reply' }))
+
+    const replyForm = screen.getByPlaceholderText('Reply to dana…').closest<HTMLFormElement>('.reply-form')!
+    const replyBox = within(replyForm).getByPlaceholderText('Reply to dana…')
+    expect(replyBox).toHaveValue('@dana ')
+
+    await user.type(replyBox, 'Agreed!')
+    await user.click(within(replyForm).getByRole('button', { name: 'Reply' }))
+
+    // parentId is still the top-level comment (c1), not the reply (r1) - the reply the
+    // button was clicked on doesn't itself become a parent, keeping the thread flat.
+    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@dana Agreed!', 'c1')
+  })
+
   it("lets a comment's own author edit it inline", async () => {
     const user = userEvent.setup()
     getCommentsMock.mockResolvedValue([makeComment({ author: { ...author, id: 'viewer-1', username: 'viewer' } })])
