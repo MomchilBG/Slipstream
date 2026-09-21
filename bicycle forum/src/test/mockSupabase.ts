@@ -64,6 +64,7 @@ export interface SupabaseMock {
     signInWithPassword: ReturnType<typeof vi.fn>
     signUp: ReturnType<typeof vi.fn>
     signOut: ReturnType<typeof vi.fn>
+    updateUser: ReturnType<typeof vi.fn>
   }
   storage: {
     from: ReturnType<typeof vi.fn>
@@ -89,6 +90,7 @@ export const createSupabaseMock = (): SupabaseMock => ({
     signInWithPassword: vi.fn(async () => ({ data: {}, error: null })),
     signUp: vi.fn(async () => ({ data: {}, error: null })),
     signOut: vi.fn(async () => ({ error: null })),
+    updateUser: vi.fn(async () => ({ data: {}, error: null })),
   },
   storage: {
     from: vi.fn(() => createStorageBucketMock()),
