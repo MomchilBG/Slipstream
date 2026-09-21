@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import {
   castVote,
@@ -21,6 +21,7 @@ import { roleLabel } from '../../lib/publicProfiles'
 import type { PublicProfile } from '../../lib/publicProfiles'
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog'
 import ImageLightbox from '../../components/ImageLightbox/ImageLightbox'
+import MentionText from '../../components/MentionText/MentionText'
 import '../auth.css'
 import './PostView.css'
 
@@ -116,7 +117,9 @@ const CommentBody = ({
           </form>
         ) : (
           <>
-            <p className={comment.isDeleted ? 'comment-content comment-content-deleted' : 'comment-content'}>{comment.content}</p>
+            <p className={comment.isDeleted ? 'comment-content comment-content-deleted' : 'comment-content'}>
+              {comment.isDeleted ? comment.content : <MentionText text={comment.content} />}
+            </p>
             <div className="comment-actions">
               {canReply && (
                 <button type="button" className="action-link" onClick={onStartReply}>
@@ -184,6 +187,8 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
   const [showDeletePostConfirm, setShowDeletePostConfirm] = useState(false)
 
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null)
+  const location = useLocation()
 
   useEffect(() => {
     let cancelled = false
@@ -202,6 +207,30 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
       cancelled = true
     }
   }, [postId, user?.id])
+
+  // Landing here from a notification (a #comment-<id> hash) - scroll to and
+  // briefly highlight the comment it points at, once the comments it needs
+  // to find have actually loaded. Runs once per hash rather than per
+  // render, so it doesn't keep re-scrolling on every unrelated state update.
+  useEffect(() => {
+    if (loading || !location.hash.startsWith('#comment-')) return
+
+    const commentId = location.hash.slice('#comment-'.length)
+    const target = document.getElementById(location.hash.slice(1))
+    if (!target) return
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    // Deferred rather than called synchronously in the effect body itself
+    // (react-hooks/set-state-in-effect) - both timeouts still fire well
+    // within the same tick's worth of user-perceived time.
+    const highlightTimeout = setTimeout(() => setHighlightedCommentId(commentId), 0)
+    const unhighlightTimeout = setTimeout(() => setHighlightedCommentId(null), 2500)
+    return () => {
+      clearTimeout(highlightTimeout)
+      clearTimeout(unhighlightTimeout)
+    }
+  }, [loading, location.hash])
 
   const refreshPost = async () => {
     const result = await getPostDetail(postId, user?.id ?? null)
@@ -290,9 +319,16 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
     await refreshComments()
   }
 
-  const startReply = (commentId: string) => {
-    setReplyingTo(commentId)
-    setReplyText('')
+  // Prefills "@username " for the comment being replied to - it's editable
+  // plain text in the textarea (not a real link until posted), but doubles
+  // as an implicit mention: MentionText renders it as a profile link once
+  // the reply is rendered back, and the notify_on_comment_insert() trigger
+  // reads it the same way any other @mention in the content would be read,
+  // deliberately deduping against the reply's own reply_to_comment
+  // notification rather than sending that person two notifications.
+  const startReply = (comment: CommentItem) => {
+    setReplyingTo(comment.id)
+    setReplyText(`@${comment.author.username} `)
     setReplyError(null)
   }
 
@@ -433,7 +469,7 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
         editError={editError}
         savingEdit={savingEdit}
         isDeleting={deletingCommentId === comment.id}
-        onStartReply={() => startReply(comment.id)}
+        onStartReply={() => startReply(comment)}
         onStartEdit={() => startEditComment(comment)}
         onCancelEdit={cancelEditComment}
         onEditTextChange={setEditText}
@@ -591,7 +627,11 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
           ) : (
             <ul id="comment-list">
               {topLevelComments.map((comment) => (
-                <li key={comment.id} className="comment-item">
+                <li
+                  key={comment.id}
+                  id={`comment-${comment.id}`}
+                  className={comment.id === highlightedCommentId ? 'comment-item comment-item-highlighted' : 'comment-item'}
+                >
                   {renderCommentBody(comment, true)}
 
                   {editingCommentId !== comment.id &&
@@ -620,7 +660,15 @@ const PostViewForPost = ({ postId }: { postId: string }) => {
                   {(repliesByParent.get(comment.id) ?? []).length > 0 && (
                     <ul className="comment-replies">
                       {repliesByParent.get(comment.id)!.map((reply) => (
-                        <li key={reply.id} className="comment-item comment-reply">
+                        <li
+                          key={reply.id}
+                          id={`comment-${reply.id}`}
+                          className={
+                            reply.id === highlightedCommentId
+                              ? 'comment-item comment-reply comment-item-highlighted'
+                              : 'comment-item comment-reply'
+                          }
+                        >
                           {renderCommentBody(reply, false)}
                         </li>
                       ))}

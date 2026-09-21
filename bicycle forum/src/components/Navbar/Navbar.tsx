@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useTheme } from '../../theme/ThemeContext'
 import { useAuth } from '../../auth/AuthContext'
 import SearchBar from '../SearchBar/SearchBar'
+import NotificationBell from '../NotificationBell/NotificationBell'
 import './Navbar.css'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) => isActive ? 'active' : undefined
@@ -62,6 +63,7 @@ const Navbar = () => {
         </nav>
       </div>
       {profile && <SearchBar />}
+      {profile && <NotificationBell />}
       {profile && (
         <NavLink to={`/users/${profile.username}`} id="nav-avatar" aria-label="Your profile" className={navLinkClass}>
           {profile.avatar_url ? (

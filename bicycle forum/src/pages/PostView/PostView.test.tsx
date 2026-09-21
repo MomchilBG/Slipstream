@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthContext } from '../../auth/AuthContext'
@@ -92,9 +92,12 @@ const LocationProbe = () => {
   return <div data-testid="location">{location.pathname}</div>
 }
 
-const renderPostView = (authValue = makeSignedInAuthValue({ profile: makeProfile({ id: 'viewer-1', username: 'viewer' }) })) =>
+const renderPostView = (
+  authValue = makeSignedInAuthValue({ profile: makeProfile({ id: 'viewer-1', username: 'viewer' }) }),
+  route = '/posts/p1',
+) =>
   render(
-    <MemoryRouter initialEntries={['/posts/p1']}>
+    <MemoryRouter initialEntries={[route]}>
       <AuthContext.Provider value={authValue}>
         <Routes>
           <Route path="/posts/:id" element={<PostView />} />
@@ -177,7 +180,7 @@ describe('PostView', () => {
     expect(textarea).toHaveValue('')
   })
 
-  it('replies to a top-level comment', async () => {
+  it('replies to a top-level comment, prefilled with an @mention of its author', async () => {
     const user = userEvent.setup()
     getCommentsMock.mockResolvedValue([makeComment()])
     renderPostView()
@@ -185,10 +188,13 @@ describe('PostView', () => {
 
     await user.click(screen.getByRole('button', { name: 'Reply' }))
     const replyForm = screen.getByPlaceholderText('Reply to commenter…').closest<HTMLFormElement>('.reply-form')!
-    await user.type(within(replyForm).getByPlaceholderText('Reply to commenter…'), 'Thanks!')
+    const replyBox = within(replyForm).getByPlaceholderText('Reply to commenter…')
+    expect(replyBox).toHaveValue('@commenter ')
+
+    await user.type(replyBox, 'Thanks!')
     await user.click(within(replyForm).getByRole('button', { name: 'Reply' }))
 
-    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', 'Thanks!', 'c1')
+    expect(createCommentMock).toHaveBeenCalledWith('p1', 'viewer-1', '@commenter Thanks!', 'c1')
   })
 
   it("lets a comment's own author edit it inline", async () => {
@@ -239,5 +245,34 @@ describe('PostView', () => {
 
     await screen.findByText('Tubeless setup tips')
     expect(screen.getByText("You've been blocked from commenting.")).toBeInTheDocument()
+  })
+
+  it('renders an @mention inside comment content as a link to that profile', async () => {
+    getCommentsMock.mockResolvedValue([makeComment({ content: 'Thanks @alexr for the writeup' })])
+    renderPostView()
+
+    await screen.findByText(/Thanks/)
+    expect(screen.getByRole('link', { name: '@alexr' })).toHaveAttribute('href', '/users/alexr')
+  })
+
+  it("does not linkify a mention inside a deleted comment's content", async () => {
+    getCommentsMock.mockResolvedValue([makeComment({ content: '@alexr check this out', isDeleted: true })])
+    renderPostView()
+
+    await screen.findByText('@alexr check this out')
+    expect(screen.queryByRole('link', { name: '@alexr' })).not.toBeInTheDocument()
+  })
+
+  it('scrolls to and highlights the comment targeted by a #comment-<id> hash', async () => {
+    const scrollIntoViewMock = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoViewMock
+    getCommentsMock.mockResolvedValue([makeComment({ id: 'c1' }), makeComment({ id: 'c2', content: 'Another comment' })])
+    renderPostView(undefined, '/posts/p1#comment-c2')
+
+    await screen.findByText('Another comment')
+
+    expect(scrollIntoViewMock).toHaveBeenCalled()
+    const highlighted = screen.getByText('Another comment', { selector: '.comment-content' }).closest('.comment-item')
+    await waitFor(() => expect(highlighted).toHaveClass('comment-item-highlighted'))
   })
 })

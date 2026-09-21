@@ -394,6 +394,35 @@
   font-style: italic;
 }
 
+.mention-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Briefly highlights the comment a notification's "leads to the comment"
+   link scrolled to, so it's clear which one out of a whole thread was
+   actually targeted - removed again a couple seconds after landing. */
+.comment-item-highlighted {
+  animation: comment-highlight-fade 2.5s ease-out;
+}
+
+@keyframes comment-highlight-fade {
+  from {
+    background: var(--accent-bg);
+    outline: 2px solid var(--accent-border);
+    outline-offset: 6px;
+  }
+  to {
+    background: transparent;
+    outline-color: transparent;
+  }
+}
+
 .comment-actions {
   display: flex;
   gap: 12px;
