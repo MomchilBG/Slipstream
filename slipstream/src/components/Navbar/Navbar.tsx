@@ -31,7 +31,7 @@ const Navbar = () => {
       </button>
       <div id="nav-menu" className={menuOpen ? 'open' : undefined}>
         <NavLink to="/" id="brand" onClick={closeMenu}>
-          🚲 Slipstream
+          <img src="/favicon.svg" alt="Slipstream" width={36} height={36} />
         </NavLink>
         <nav>
           {profile ? (

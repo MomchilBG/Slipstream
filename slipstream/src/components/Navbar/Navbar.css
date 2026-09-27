@@ -99,14 +99,21 @@
 }
 
 #brand {
-  font-weight: 600;
-  font-size: 18px;
-  color: var(--text-h);
-  text-decoration: none;
-  white-space: nowrap;
+  display: flex;
+  flex: none;
+  border-radius: 9px;
+
+  img {
+    display: block;
+    width: 36px;
+    height: 36px;
+  }
 
   @media (max-width: 480px) {
-    font-size: 16px;
+    img {
+      width: 32px;
+      height: 32px;
+    }
   }
 }
 

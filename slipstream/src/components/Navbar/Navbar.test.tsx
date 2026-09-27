@@ -20,6 +20,15 @@ beforeEach(() => {
 })
 
 describe('Navbar', () => {
+  it('shows the logo as the home link, with no brand text beside it', () => {
+    renderWithProviders(<Navbar />)
+
+    const homeLink = screen.getByRole('link', { name: 'Slipstream' })
+    expect(homeLink).toHaveAttribute('href', '/')
+    expect(homeLink.querySelector('img')).toHaveAttribute('src', '/favicon.svg')
+    expect(homeLink).not.toHaveTextContent('Slipstream')
+  })
+
   it('shows Log in/Register and hides Browse/New post when signed out', () => {
     renderWithProviders(<Navbar />)
 
