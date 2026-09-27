@@ -15,10 +15,10 @@ Built with **React + TypeScript + Vite** on the frontend and **Supabase** (Postg
 
 ## Getting started
 
-The app lives in the `bicycle forum/` subdirectory — run all commands from there:
+The app lives in the `slipstream/` subdirectory — run all commands from there:
 
 ```
-cd "bicycle forum"
+cd slipstream
 npm install
 cp .env.example .env.local   # then fill in your Supabase project's URL and publishable key
 npm run dev
@@ -35,14 +35,14 @@ The database schema lives in `supabase/migrations/` as a sequence of numbered SQ
 
 ### Scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Type-check (`tsc -b`) then produce a production build |
-| `npm run lint` | Run ESLint over the project |
-| `npm run preview` | Preview the production build locally |
-| `npm run test` | Run the Vitest suite once (used before committing) |
-| `npm run test:watch` | Run Vitest in watch mode for local iteration |
+| Command              | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `npm run dev`        | Start the Vite dev server                             |
+| `npm run build`      | Type-check (`tsc -b`) then produce a production build |
+| `npm run lint`       | Run ESLint over the project                           |
+| `npm run preview`    | Preview the production build locally                  |
+| `npm run test`       | Run the Vitest suite once (used before committing)    |
+| `npm run test:watch` | Run Vitest in watch mode for local iteration          |
 
 ## Features
 
@@ -57,12 +57,12 @@ The database schema lives in `supabase/migrations/` as a sequence of numbered SQ
 - **Admin**: a dedicated `/admin` section (separate from the rest of the app) lets admins search users, block/unblock accounts, delete any post, and remove tags or comments from any post.
 - **Light/dark theme** toggle, persisted and applied via CSS custom properties.
 
-See `Requirements.md` for the full product spec and `CLAUDE.md` for detailed, up-to-date implementation notes (architecture decisions, gotchas, and rationale) intended for AI coding assistants working on this codebase.
+See `CLAUDE.md` for detailed, up-to-date implementation notes (architecture decisions, gotchas, and rationale) intended for AI coding assistants working on this codebase.
 
 ## Project structure
 
 ```
-bicycle forum/
+slipstream/
 ├── src/
 │   ├── auth/          # AuthProvider/AuthContext wrapping Supabase auth
 │   ├── components/    # Shared UI: Navbar, PostForm, ConfirmDialog, RequireAuth/RequireAdmin, ...
