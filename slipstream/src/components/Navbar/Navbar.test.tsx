@@ -66,12 +66,48 @@ describe('Navbar', () => {
     expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument()
   })
 
-  it('toggles the mobile menu open and closed', async () => {
+  it('opens the menu drawer, focuses its close button, and closes it again', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Navbar />)
 
     const toggle = screen.getByRole('button', { name: 'Open menu' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await user.click(toggle)
-    expect(screen.getByRole('button', { name: 'Close menu' })).toBeInTheDocument()
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(document.getElementById('nav-menu')).toHaveClass('open')
+
+    const close = screen.getByRole('button', { name: 'Close menu' })
+    expect(close).toHaveFocus()
+    await user.click(close)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById('nav-menu')).not.toHaveClass('open')
+  })
+
+  it('closes the drawer on Escape, on a backdrop click, and when a link is followed', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Navbar />, { authValue: makeSignedInAuthValue() })
+    const toggle = screen.getByRole('button', { name: 'Open menu' })
+
+    await user.click(toggle)
+    await user.keyboard('{Escape}')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+    await user.click(document.getElementById('nav-backdrop')!)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById('nav-backdrop')).not.toBeInTheDocument()
+
+    await user.click(toggle)
+    await user.click(screen.getByRole('link', { name: 'Browse' }))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('gives the drawer a Home link and an icon next to each nav link', () => {
+    renderWithProviders(<Navbar />, { authValue: makeSignedInAuthValue() })
+
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/')
+    for (const name of ['Home', 'Browse', 'New post']) {
+      expect(screen.getByRole('link', { name }).querySelector('svg.nav-icon')).toBeInTheDocument()
+    }
   })
 })

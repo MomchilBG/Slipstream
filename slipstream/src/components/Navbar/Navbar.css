@@ -56,6 +56,15 @@
   display: contents;
 }
 
+/* Drawer-only pieces - the header, the Home link, and the link icons only
+   exist in the narrow-viewport side drawer, never in the desktop row. */
+#nav-drawer-header,
+#nav-backdrop,
+#nav-home-link,
+#navbar nav .nav-icon {
+  display: none;
+}
+
 @media (max-width: 640px) {
   #navbar {
     flex-wrap: nowrap;
@@ -65,36 +74,155 @@
     display: flex;
   }
 
+  /* GitHub-style side drawer: slides in from the left edge, full height,
+     over a dimmed backdrop. It stays rendered (just off-screen and
+     visibility: hidden) while closed so the slide can animate both ways;
+     visibility keeps its links out of the tab order until it's open. */
   #nav-menu {
-    display: none;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 102;
+    width: min(320px, 85vw);
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    border-radius: 0 12px 12px 0;
+    box-shadow: var(--shadow);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
 
     &.open {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      padding: 16px 20px;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
+      transform: translateX(0);
+      visibility: visible;
+      transition: transform 0.22s ease, visibility 0s;
     }
   }
 
-  #nav-menu.open nav {
-    flex-direction: column;
-    align-items: flex-start;
-    flex: initial;
-    width: 100%;
+  #nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 101;
+    background: rgba(0, 0, 0, 0.4);
   }
 
-  /* With #nav-menu collapsed, nothing left of the toggle grows to fill the
-     row - dock it to the right explicitly (harmless when the search bar is
-     also present, since that already grows to fill any leftover space). */
+  #nav-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+
+    img {
+      display: block;
+    }
+  }
+
+  #nav-drawer-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--code-bg);
+      color: var(--text-h);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+  }
+
+  /* The drawer's header logo stands in for the brand link here (#navbar
+     prefix so this outranks the base #brand rule further down the file). */
+  #navbar #brand {
+    display: none;
+  }
+
+  #navbar #nav-menu nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    flex: initial;
+    gap: 2px;
+  }
+
+  #nav-home-link {
+    display: flex;
+  }
+
+  #navbar #nav-menu nav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-h);
+    font-size: 14px;
+
+    &:hover {
+      background: var(--code-bg);
+    }
+
+    &.active {
+      background: var(--code-bg);
+      font-weight: 600;
+    }
+
+    /* Accent bar hanging off the active item's left edge, like GitHub's. */
+    &.active::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+  }
+
+  #navbar nav .nav-icon {
+    display: block;
+    flex: none;
+    color: var(--text);
+  }
+
+  /* With #nav-menu out of the row, nothing left of the toggle grows to fill
+     it - dock the theme toggle to the right explicitly (harmless when the
+     search bar is also present, since that already grows to fill any
+     leftover space). */
   #theme-toggle {
     margin-left: auto;
+  }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  #nav-menu,
+  #nav-menu.open {
+    transition: none;
   }
 }
 
